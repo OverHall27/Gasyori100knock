@@ -141,7 +141,7 @@ def BITRATE():
 
 
 # Read image
-img = cv2.imread("imori.jpg").astype(np.float32)
+img = cv2.imread("../imori.jpg").astype(np.float32)
 
 # JPEG
 out = JPEG(img)

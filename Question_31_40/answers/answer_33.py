@@ -94,7 +94,7 @@ def lpf(G, ratio=0.5):
 
 
 # Read image
-img = cv2.imread("imori.jpg").astype(np.float32)
+img = cv2.imread("../imori.jpg").astype(np.float32)
 H, W, C = img.shape
 
 # Gray scale

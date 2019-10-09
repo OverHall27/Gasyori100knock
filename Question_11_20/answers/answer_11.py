@@ -28,7 +28,4 @@ img = cv2.imread("imori.jpg")
 out = mean_filter(img, K_size=3)
 
 # Save result
-cv2.imwrite("out.jpg", out)
-cv2.imshow("result", out)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+cv2.imwrite("answer_11.jpg", out)

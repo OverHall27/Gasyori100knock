@@ -4,9 +4,8 @@
 #include <math.h>
 
 int main(int argc, const char* argv[]){
-
   // read original image
-  cv::Mat img = cv::imread("imori.jpg", cv::IMREAD_COLOR);
+  cv::Mat img = cv::imread("../imori.jpg", cv::IMREAD_COLOR);
 
   int width = img.rows;
   int height = img.cols;
@@ -47,7 +46,7 @@ int main(int argc, const char* argv[]){
     }
   }
   
-  //cv::imwrite("out.jpg", out);
+  cv::imwrite("out.jpg", out);
   cv::imshow("answer", out);
   cv::waitKey(0);
   cv::destroyAllWindows();

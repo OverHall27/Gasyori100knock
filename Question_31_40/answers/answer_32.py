@@ -56,7 +56,7 @@ def idft(G):
 
 
 # Read image
-img = cv2.imread("imori.jpg").astype(np.float32)
+img = cv2.imread("../imori.jpg").astype(np.float32)
 
 # DFT
 G = dft(img)
