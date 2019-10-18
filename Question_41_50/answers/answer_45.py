@@ -2,20 +2,18 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 
+def BGR2GRAY(img):
+    b = img[:, :, 0].copy()
+    g = img[:, :, 1].copy()
+    r = img[:, :, 2].copy()
+
+    # Gray scale
+    out = 0.2126 * r + 0.7152 * g + 0.0722 * b
+    out = out.astype(np.uint8)
+
+    return out
+
 def Canny(img):
-
-	# Gray scale
-	def BGR2GRAY(img):
-		b = img[:, :, 0].copy()
-		g = img[:, :, 1].copy()
-		r = img[:, :, 2].copy()
-
-		# Gray scale
-		out = 0.2126 * r + 0.7152 * g + 0.0722 * b
-		out = out.astype(np.uint8)
-
-		return out
-
 
 	# Gaussian filter for grayscale
 	def gaussian_filter(img, K_size=3, sigma=1.3):
@@ -261,10 +259,11 @@ def Hough_Line_step2(edge):
 
 
 # Read image
-img = cv2.imread("thorino.jpg").astype(np.float32)
-
+img = cv2.imread("../thorino.jpg").astype(np.float32)
+gray = BGR2GRAY(img)
 # Canny
-edge = Canny(img)
+#edge = Canny(img)
+edge = cv2.Canny(gray, threshold1=30., threshold2=100., apertureSize=3, L2gradient=True)
 
 # Hough
 out = Hough_Line_step2(edge)

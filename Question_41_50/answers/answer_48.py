@@ -67,7 +67,7 @@ def Erode(img, Erode_time=1):
 
 
 # Read image
-img = cv2.imread("imori.jpg").astype(np.float32)
+img = cv2.imread("../imori.jpg").astype(np.float32)
 
 
 # Grayscale
