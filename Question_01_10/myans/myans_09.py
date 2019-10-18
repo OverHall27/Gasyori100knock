@@ -2,34 +2,38 @@ import cv2
 import numpy as np
 
 def GaussianFilter(img, K_size=3, sigma=1.3):
-    Hol, Ber, Col = img. shape
+    Ver, Hor, Col = img. shape
     
     ## zero padding
-    result = np.zeros((Hol + 2, Ber + 2, Col), dtype=np.float)
-    result[1: 1 + Hol, 1: 1 + Ber] = img.copy().astype(np.float)
+    pad = K_size // 2
+    tmp = np.pad(img, [(pad,pad), (pad,pad), (0, 0)], 'constant')
+    result = np.zeros_like(tmp)
 
     ## create kernel
     kernel = np.zeros((K_size, K_size), dtype=np.float)
-    for x in range(-1, 2):
-        for y in range(-1, 2):
-            kernel[y + 1, x + 1] = np.exp( -(x ** 2 + y ** 2) / (2 * (sigma ** 2)))
-    ##kernel /= ( (sigma ** 2) * (2. * np.pi))
-    kernel /= ( sigma * np.sqrt(2. * np.pi))
-    print(kernel)
-    kernel /= kernel.sum()
-    print(kernel)
-    tmp = result.copy()
+    for x in range(-pad, pad+1):
+        for y in range(-pad, pad+1):
+            kernel[y + pad, x + pad] = np.exp( -(x ** 2 + y ** 2) / (2 * (sigma ** 2)))
 
-    for x in range(Hol):
-        for y in range(Ber):
+    kernel /= ( sigma * np.sqrt(2. * np.pi))
+    kernel /= kernel.sum()
+
+    for x in range(pad, Hor+pad):
+        for y in range(pad, Ver+pad):
             for c in range(Col):
-                result[x + 1, y + 1, c] = np.sum(kernel * tmp[x: x + K_size, y: y + K_size, c])
-    result =  result[1: 1 + Hol, 1: 1 + Ber].astype(np.uint8)
+                result[y, x, c] = np.sum(kernel * tmp[y-pad: y+pad+1, x-pad: x+pad+1, c])
+    result =  result[pad: pad + Ver, pad: pad + Ver].astype(np.uint8)
 
     return result
 
-img = cv2.imread("imori_noise.jpg")
-
+img = cv2.imread("../imori_noise.jpg").astype(np.float)
 
 result = GaussianFilter(img, K_size=3, sigma=1.3)
+official = cv2.GaussianBlur(img, (3,3), 1.3)
+
 cv2.imwrite("myans_09.jpg", result)
+cv2.imwrite("cv2_09.jpg", official)
+cv2.imshow("result", result)
+cv2.imshow("official", official)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
