@@ -26,7 +26,6 @@ def Template_matching(img, template):
             if _v < v:
                 v = _v
                 i, j = x, y
-
     out = img.copy()
     # draw rectangle
     cv2.rectangle(out, pt1=(i, j), pt2=(i+Wt, j+Ht), color=(0,0,255), thickness=1)
@@ -35,10 +34,10 @@ def Template_matching(img, template):
     return out
 
 # Read image
-img = cv2.imread("imori.jpg").astype(np.float32)
+img = cv2.imread("../imori.jpg").astype(np.float32)
 
 # Read templete image
-template = cv2.imread("imori_part.jpg").astype(np.float32)
+template = cv2.imread("../imori_part.jpg").astype(np.float32)
 
 # Template matching
 out = Template_matching(img, template)
