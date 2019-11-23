@@ -13,8 +13,8 @@ def HOG(gray):
 
         gray = np.pad(gray, (1, 1), 'edge')
         gx = gray[1:Ver+1, 2:] - gray[1:Ver+1, :Hor]
-        gy = gray[:Ver, 1:Hor+1] - gray[2:, 1:Hor+1]
-        #gy = gray[2:, 1:Hor+1] - gray[:Ver, 1:Hor+1]
+        #gy = gray[:Ver, 1:Hor+1] - gray[2:, 1:Hor+1]
+        gy = gray[2:, 1:Hor+1] - gray[:Ver, 1:Hor+1]
         # keep from zero-dividing
         gx[gx == 0] = 1e-6
 
