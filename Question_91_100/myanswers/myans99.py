@@ -14,7 +14,6 @@ def HOG(gray):
 
         gray = np.pad(gray, (1, 1), 'edge')
         gx = gray[1:Ver+1, 2:] - gray[1:Ver+1, :Hor]
-        #gy = gray[:Ver, 1:Hor+1] - gray[2:, 1:Hor+1]
         gy = gray[2:, 1:Hor+1] - gray[:Ver, 1:Hor+1]
         # keep from zero-dividing
         gx[gx == 0] = 1e-6
@@ -26,7 +25,7 @@ def HOG(gray):
         ang = np.arctan(gy / gx)
 
         # arctanは返り値(-2/pi, 2/pi)なので，負の値はpi回転
-        ang[ang < 0] = np.pi + ang[ang < 0]
+        ang[ang < 0] = np.pi / 2 + ang[ang < 0] + np.pi / 2
 
         return mag, ang
 
@@ -54,15 +53,6 @@ def HOG(gray):
                 for j in range(N):
                     for i in range(N):
                         hist[y, x, ang[y * N + j, x * N + i]] += mag[y * N + j, x * N + i]
-
-        '''
-        for x in range(Hor):
-            hx = x // sell
-            for y in range(Ver):
-                hy = y // sell
-
-                hist[hy, hx, ang[y, x]-1] += mag[y, x]
-        '''
 
         return hist
 
@@ -116,6 +106,7 @@ class NN:
     def train(self, x, t):
         # backpropagation output layer
         En = 2 * (t - self.out) * self.out * (1 - self.out)
+        #En = (t - self.out) * self.out * (1 - self.out)
         grad_En = En 
         grad_wout = np.dot(self.z3.T, En)
         grad_bout = np.dot(np.ones([En.shape[0]]), En)
@@ -140,7 +131,7 @@ class NN:
 def sigmoid(x):
     return 1. / (1. + np.exp(-x))
 
-def MakeDataset(img, gt, th=0.5, dataN=200, cropL=60, size=32):
+def MakeDataset(img, gt, th, dataN=200, cropL=60, size=32):
 
     def CalcIOU(reg1, reg2):
 
@@ -152,8 +143,12 @@ def MakeDataset(img, gt, th=0.5, dataN=200, cropL=60, size=32):
             reg12[i] = max(reg1[i], reg2[i])
             reg12[i+2] = min(reg1[i+2], reg2[i+2])
 
-            area12 = (reg12[2] - reg12[0]) * (reg12[3] - reg12[1])
-        return area12 / (area1 + area2 - area12)
+        area_x = max(reg12[2] - reg12[0], 0)
+        area_y = max(reg12[3] - reg12[1], 0)
+        area12 = area_x * area_y
+        iou = area12 / (area1 + area2 - area12)
+        
+        return iou
 
     Ver, Hor = img.shape
     set_size = ((size // 8) ** 2) * 9
@@ -167,7 +162,7 @@ def MakeDataset(img, gt, th=0.5, dataN=200, cropL=60, size=32):
 
         iou = CalcIOU(gt, reg)
         label = 0
-        if iou <= th:
+        if iou >= th:
             label = 1
         else:
             label = 0
@@ -179,41 +174,113 @@ def MakeDataset(img, gt, th=0.5, dataN=200, cropL=60, size=32):
 
     return db
 
-img = cv2.imread("../imori.jpg").astype(np.float)
-gray = BGRtoGRAY(img)
-gt = np.array((47, 41, 129, 103), dtype=np.float32)
+def SlidingWindow(_img, recs, nn, th=0.7, size=32):
+    gray = BGRtoGRAY(_img)
+    Ver, Hor = gray.shape
 
-dataset = MakeDataset(gray, gt, th=0.5)
+    detects = np.zeros((0, 5), dtype=np.float32)
+    for rec in recs:
+        cy = int(rec[0] // 2)
+        cx = int(rec[1] // 2)
+        for x in range(0, Hor, 4):
+            x1 = max(x - cx, 0)
+            x2 = min(x + cx, Hor)
+            for y in range(0, Ver, 4):
+                y1 = max(y - cy, 0)
+                y2 = min(y + cy, Ver)
+
+                crop = gray[y1:y2, x1:x2]
+                crop = cv2.resize(crop, dsize=(size, size))
+                crop_hog = HOG(crop).ravel()
+                score = nn.forward(crop_hog)
+
+                if score >= 0.7:
+                    detects = np.vstack((detects, np.array((x1, y1, x2, y2, score))))
+                    cv2.rectangle(_img, (x1, y1), (x2, y2), (0, 0, 255), 1)
+    return _img, detects
+
+def NonMaximumSuppression(detects, iou_th):
+
+    def CalcIOU(reg1, reg2):
+
+        area1 = (reg1[2] - reg1[0]) * (reg1[3] - reg1[1])
+        area2 = (reg2[2] - reg2[0]) * (reg2[3] - reg2[1])
+        reg12 = np.zeros(4, dtype=np.float32)
+
+        for i in range(2):
+            reg12[i] = max(reg1[i], reg2[i])
+            reg12[i+2] = min(reg1[i+2], reg2[i+2])
+
+        area_x = max(reg12[2] - reg12[0], 0)
+        area_y = max(reg12[3] - reg12[1], 0)
+        area12 = area_x * area_y
+        iou = area12 / (area1 + area2 - area12)
+
+        return iou
+
+
+    reject_list = [0]
+    detects_list = np.zeros((0, 5))
+    while len(reject_list) > 0:
+        reject_list = []
+        detects = detects[np.argsort(detects[:, 4])][::-1]
+
+        b0 = detects[0]
+        gt = np.array((b0[0], b0[1], b0[2], b0[3]))
+ 
+        for i in range(len(detects) - 1):
+            reg = np.array((detects[i+1][0], detects[i+1][1], detects[i+1][2], detects[i+1][3]))
+
+            iou = CalcIOU(gt, reg)
+
+            if iou >= iou_th:
+                reject_list.append(detects[i+1][4][0])
+
+
+        for i in range(len(reject_list)):
+            np.delete(detects, np.where(detects[..., 4] == reject_list[i]))
+        np.delete(detects, np.where(detects[..., 4] == b0[4]))
+        np.append(detects_list, b0)
+
+    return detects_list
+
+
+img1 = cv2.imread("../imori_1.jpg")
+gt = np.array((47, 41, 129, 103), dtype=np.float32)
+gray = BGRtoGRAY(img1)
+
+dataset = MakeDataset(img=gray, gt=gt, th=0.5)
+
 dims = (dataset.shape[1] - 1)
 nn = NN(ind=dims, lr=0.01)
 
 train_x = dataset[:, :dims]
 train_t = dataset[:, -1][..., None]
 
-# train
+# finish training
 for i in range(10000):
     nn.forward(train_x)
     nn.train(train_x, train_t)
 
-# test
-accuracy_N = 0.
-pred_th = 0.5
-# each data
-for data, t in zip(train_x, train_t):
-    # get prediction
-    prob = nn.forward(data)
+# これらの異なるサイズの矩形で適する場所を検出
+recs = np.array(((42, 42), (56, 56), (70, 70)), dtype=np.float32)
+img2 = cv2.imread("../imori_many.jpg")
+img = img2.copy()
 
-    # count accuracy
-    pred = 1 
-    if prob >= pred_th:
-        pred = 1
-    else:
-        pred = 0
+mapping_img, detects = SlidingWindow(img2, recs, nn)
 
-    if t == pred:
-        accuracy_N += 1
+detects_list =  NonMaximumSuppression(detects, 0.25)
 
-    # get accuracy 
-accuracy = accuracy_N / len(dataset)
+for i in range(len(detects_list)):
+    x1 = detects_list[i][0]
+    y1 = detects_list[i][1]
+    x2 = detects_list[i][2]
+    y2 = detects_list[i][3]
 
-print("Accuracy >> {} ({} / {})".format(accuracy, accuracy_N, len(dataset)))
+    cv2.rectangle(img, (x1, y1), (x2, y2), (0, 0, 255), 1)
+
+
+cv2.imwrite("myans_99.jpg", img)
+cv2.imshow("result",  img)
+cv2.waitKey(0)
+

@@ -4,7 +4,7 @@ import numpy as np
 np.random.seed(0)
 
 # read image
-img = cv2.imread("imori_1.jpg")
+img = cv2.imread("../imori_1.jpg")
 H, W, C = img.shape
 
 # Grayscale
@@ -46,7 +46,7 @@ def hog(gray):
 
     d = np.pi / 9
     for i in range(9):
-        gra_n[np.where((gra >= d * i) & (gra <= d * (i+1)))] = i
+        gra_n[np.where((gra >= d * i) & (gra < d * (i+1)))] = i
 
     N = 8
     HH = h // N
@@ -56,7 +56,7 @@ def hog(gray):
         for x in range(HW):
             for j in range(N):
                 for i in range(N):
-                    Hist[y, x, gra_n[y*4+j, x*4+i]] += mag[y*4+j, x*4+i]
+                    Hist[y, x, gra_n[y*8+j, x*8+i]] += mag[y*8+j, x*8+i]
 
     ## Normalization
     C = 3
@@ -111,7 +111,7 @@ class NN:
     def train(self, x, t):
         # backpropagation output layer
         #En = t * np.log(self.out) + (1-t) * np.log(1-self.out)
-        En = (self.out - t) * self.out * (1 - self.out)
+        En = 2 * (self.out - t) * self.out * (1 - self.out)
         grad_wout = np.dot(self.z3.T, En)
         grad_bout = np.dot(np.ones([En.shape[0]]), En)
         self.wout -= self.lr * grad_wout
@@ -173,15 +173,14 @@ for i in range(10000):
 
 
 # read detect target image
-img2 = cv2.imread("imori_many.jpg")
+img2 = cv2.imread("../imori_many.jpg")
 H2, W2, C2 = img2.shape
 
 # Grayscale
 gray2 = 0.2126 * img2[..., 2] + 0.7152 * img2[..., 1] + 0.0722 * img2[..., 0]
 
 # [h, w]
-recs = np.array(((42, 42), (56, 56), (70, 70)), dtype=np.float32)
-
+recs = np.array(((42, 42), (56, 56), (70, 70)), dtype=np.float32) 
 detects = np.ndarray((0, 5), dtype=np.float32)
 
 # sliding window
@@ -204,6 +203,7 @@ for y in range(0, H2, 4):
                 detects = np.vstack((detects, np.array((x1, y1, x2, y2, score))))
 
 print(detects)
+print(detects.shape)
 
 cv2.imwrite("out.jpg", img2)
 cv2.imshow("result", img2)

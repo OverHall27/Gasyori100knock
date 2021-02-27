@@ -251,6 +251,7 @@ cv2.imshow("0", myans0)
 cv2.imshow("1", myans1)
 cv2.imshow("2", myans2)
 '''
+
 cv2.waitKey(0)
 cv2.destroyAllWindows()
 
